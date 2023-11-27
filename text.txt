@@ -1,89 +1,337 @@
+[1:59 PM] Singh, Shagun
 mod task;  
+
 use std::io::{Read, Write};  
+
 use std::path::Path;  
+
 use egui::{Align, CentralPanel, ComboBox, CtxRef, Label, SidePanel, TextBox, TopPanel, Ui, Window};  
+
 use egui_glium::Painter;  
+
 use glium::glutin;  
+
 use glium::Surface;  
+
 use task::Task;  
+
 use serde_json;  
+
 fn main() {  
+
     let event_loop = glutin::event_loop::EventLoop::new();  
+
     let window = glutin::window::WindowBuilder::new()  
+
         .with_decorations(true)  
+
         .with_resizable(true)  
+
         .with_title("To-Do App");  
+
     let context = glutin::ContextBuilder::new().with_vsync(true);  
+
     let display = glium::Display::new(window, context, &event_loop).unwrap();  
+
     let mut app = App::new();  
+
     event_loop.run(move |event, _, control_flow| {  
+
         *control_flow = glium::glutin::event_loop::ControlFlow::Poll;  
+
         match event {  
+
             glutin::event::Event::WindowEvent { event, .. } => match event {  
+
                 glutin::event::WindowEvent::CloseRequested => {  
+
                     app.save_tasks_to_file().unwrap();  
+
                     *control_flow = glium::glutin::event_loop::ControlFlow::Exit;  
+
                 }  
+
                 _ => (),  
+
             },  
+
             glutin::event::Event::MainEventsCleared => {  
+
                 display.gl_window().window().request_redraw();  
+
             }  
+
             glutin::event::Event::RedrawRequested(_) => {  
+
                 let frame = display.draw();  
+
                 let mut egui_ctx = CtxRef::default();  
+
                 egui_ctx.begin_frame();  
+
                 app.ui(&egui_ctx);  
+
                 let (_output, paint_commands) = egui_ctx.end_frame();  
+
                 let paint_jobs = egui_ctx.tessellate(paint_commands);  
+
                 frame.clear_color(0.5, 0.5, 0.5, 1.0);  
+
                 let painter = Painter::new(&display);  
+
                 painter.paint(&frame, paint_jobs);  
+
                 frame.finish().unwrap();  
+
             }  
+
             _ => (),  
+
         }  
+
     });  
+
 }  
+
 struct App {  
+
     tasks: Vec<Task>,  
+
     new_task_title: String,  
+
 }  
+
 impl App {  
+
     fn new() -> Self {  
+
         let tasks = Self::load_tasks_from_file().unwrap_or_default();  
+
         let new_task_title = String::new();  
+
         Self { tasks, new_task_title }  
+
     }  
+
     fn ui(&mut self, ctx: &CtxRef) {  
+
         TopPanel::top("top_panel").show(ctx, |ui| {  
+
             ui.heading("To-Do App");  
+
         });  
+
         SidePanel::left("side_panel").show(ctx, |ui| {  
+
             ui.heading("Add Task");  
+
             if ui.button("Load Tasks").clicked() {  
+
                 self.tasks = Self::load_tasks_from_file().unwrap_or_default();  
+
             }  
+
             if ui.button("Save Tasks").clicked() {  
+
                 self.save_tasks_to_file().unwrap();  
+
             }  
+
             TextBox::multiline(&mut self.new_task_title).ui(ui);  
+
             if ui.button("Add").clicked() {  
+
                 self.add_task();  
+
             }  
+
         });  
+
         CentralPanel::default().show(ctx, |ui| {  
+
             ui.heading("Tasks");  
+
             for task in &mut self.tasks {  
+
                 ui.horizontal(|ui| {  
+
                     let completed = &mut task.completed;  
+
                     ui.checkbox(completed, &task.title);  
+
                 });  
+
             }  
+
         });  
+
     }  
+
     fn add_task(&mut self) {  
+
         if !self.new_task_title.is_empty() {  
+
             let task = Task::new(self.new_task_title.clone());  
+
             self.tasks.push(task);  
+
             self.new_task
+
+[1:59 PM] Singh, Shagun
+use egui::{Align, CentralPanel, CtxRef, Label, SidePanel, TextBox, TopPanel, Ui, Window};  
+
+use egui_glium::Painter;  
+
+use glium::glutin;  
+
+use glium::Surface;  
+
+use serde::{Deserialize, Serialize};  
+
+use serde_json;  
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]  
+
+struct Task {  
+
+    title: String,  
+
+    completed: bool,  
+
+}  
+
+impl Task {  
+
+    fn new(title: String) -> Self {  
+
+        Self {  
+
+            title,  
+
+            completed: false,  
+
+        }  
+
+    }  
+
+}  
+
+fn main() {  
+
+    let event_loop = glutin::event_loop::EventLoop::new();  
+
+    let window = glutin::window::WindowBuilder::new()  
+
+        .with_decorations(true)  
+
+        .with_resizable(true)  
+
+        .with_title("To-Do App");  
+
+    let context = glutin::ContextBuilder::new().with_vsync(true);  
+
+    let display = glium::Display::new(window, context, &event_loop).unwrap();  
+
+    let mut tasks: Vec<Task> = Vec::new();  
+
+    let mut new_task_title = String::new();  
+
+    event_loop.run(move |event, _, control_flow| {  
+
+        *control_flow = glium::glutin::event_loop::ControlFlow::Poll;  
+
+        match event {  
+
+            glutin::event::Event::WindowEvent { event, .. } => match event {  
+
+                glutin::event::WindowEvent::CloseRequested => {  
+
+                    *control_flow = glium::glutin::event_loop::ControlFlow::Exit;  
+
+                }  
+
+                _ => (),  
+
+            },  
+
+            glutin::event::Event::MainEventsCleared => {  
+
+                display.gl_window().window().request_redraw();  
+
+            }  
+
+            glutin::event::Event::RedrawRequested(_) => {  
+
+                let frame = display.draw();  
+
+                let mut egui_ctx = CtxRef::default();  
+
+                egui_ctx.begin_frame();  
+
+                TopPanel::top("top_panel").show(&egui_ctx, |ui| {  
+
+                    ui.heading("To-Do App");  
+
+                });  
+
+                SidePanel::left("side_panel").show(&egui_ctx, |ui| {  
+
+                    ui.heading("Add Task");  
+
+                    TextBox::multiline(&mut new_task_title).ui(ui);  
+
+                    if ui.button("Add").clicked() {  
+
+                        if !new_task_title.is_empty() {  
+
+                            let task = Task::new(new_task_title.clone());  
+
+                            tasks.push(task);  
+
+                            new_task_title.clear();  
+
+                        }  
+
+                    }  
+
+                });  
+
+                CentralPanel::default().show(&egui_ctx, |ui| {  
+
+                    ui.heading("Tasks");  
+
+                    for task in &mut tasks {  
+
+                        ui.horizontal(|ui| {  
+
+                            let completed = &mut task.completed;  
+
+                            ui.checkbox(completed, &task.title);  
+
+                        });  
+
+                    }  
+
+                });  
+
+                let (_output, paint_commands) = egui_ctx.end_frame();  
+
+                let paint_jobs = egui_ctx.tessellate(paint_commands);  
+
+                frame.clear_color(0.5, 0.5, 0.5, 1.0);  
+
+                let painter = Painter::new(&display);  
+
+                painter.paint(&frame, paint_jobs);  
+
+                frame.finish().unwrap();  
+
+            }  
+
+            _ => (),  
+
+        }  
+
+    });  
+
+}  
